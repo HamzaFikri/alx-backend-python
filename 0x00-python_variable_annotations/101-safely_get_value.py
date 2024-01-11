@@ -4,14 +4,14 @@
     annotations to the function
     Argument: T - a TypeVar with value '~T'
 '''
-from typing import Any, Mapping, Union, TypeVar
+from typing import Mapping, Any, TypeVar, Union
 
-T = TypeVar('T')
-Res = Union[Any, T]
-Def = Union[T, None]
+T = TypeVar("T")
 
 
-def safely_get_value(dct: Mapping, key: Any, default: Def = None) -> Res:
+def safely_get_value(
+    dct: Mapping, key: Any, default: Union[T, None] = None
+) -> Union[Any, T]:
     '''Retrieves a value from a dict using a given key.
     '''
     if key in dct:
