@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-'''
-Module Doc
-'''
-from typing import Tuple, List, Any
+"""
+Type Checking
+"""
+from typing import Union, Any, Mapping, Tuple, List
 
 
 def zoom_array(lst: Tuple, factor: int = 2) -> List:
-    '''
-    Function Docs
-    '''
+    """
+    zoom
+    """
     zoomed_in: List = [
         item for item in lst
         for i in range(factor)
@@ -16,8 +16,8 @@ def zoom_array(lst: Tuple, factor: int = 2) -> List:
     return zoomed_in
 
 
-array = (12, 72, 91)
+array = tuple([12, 72, 91])
 
 zoom_2x = zoom_array(array)
 
-zoom_3x = zoom_array(array, 3)
+zoom_3x = zoom_array(array, int(3.0))
