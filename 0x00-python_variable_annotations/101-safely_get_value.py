@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
-'''
-    Description: Given the parameters and the return values, add type
-    annotations to the function
-    Argument: T - a TypeVar with value '~T'
-'''
+""" Module for the function safely_get_value """
+
 from typing import Mapping, Any, TypeVar, Union
 
 T = TypeVar("T")
@@ -12,8 +9,7 @@ T = TypeVar("T")
 def safely_get_value(
     dct: Mapping, key: Any, default: Union[T, None] = None
 ) -> Union[Any, T]:
-    '''Retrieves a value from a dict using a given key.
-    '''
+    """ type-annotated function safely_get_value """
     if key in dct:
         return dct[key]
     else:
