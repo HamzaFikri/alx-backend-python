@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-"""Use mypy to validate the following piece of code
-and apply any necessary changes.
-"""
-
-from typing import Tuple, List, Any
+"""Type Checking"""
+from typing import List, Tuple
 
 
-def zoom_array(lst: Tuple, factor: int = 2) -> Tuple:
-    """Corrected annotations"""
-    zoomed_in: Tuple = [
-        item for item in lst
-        for i in range(factor)
-    ]
+def zoom_array(lst: Tuple, factor: int = 2) -> List:
+    """zoom in an array"""
+    zoomed_in: List = [item for item in lst for i in range(factor)]
     return zoomed_in
 
 
