@@ -1,155 +1,117 @@
 #!/usr/bin/env python3
-"""
-Tests for GithubOrgClient class methods
-"""
-import unittest
-from unittest.mock import patch
-from unittest.mock import MagicMock
-from unittest.mock import PropertyMock
-from parameterized import parameterized, parameterized_class
-from typing import Dict, List
+""" Module for testing client """
 
-import client
+import unittest
+from unittest.mock import PropertyMock, patch
+
+from parameterized import parameterized, parameterized_class
+
 from client import GithubOrgClient
 from fixtures import TEST_PAYLOAD
 
 
 class TestGithubOrgClient(unittest.TestCase):
-    """
-    Defines test for Github Org Client
-    """
-    @parameterized.expand(["google", "abc"])
-    @patch('client.get_json')
-    def test_org(self, org: str, getJson: MagicMock) -> None:
-        """
-        Tests the org property of GithubOrgClient class
-        Args:
-            org (str): organization
-            getJson (MagicMock): a MagicMock object of `get_json` funtion
-        Returns:
-            None
-        """
-        gitClient = GithubOrgClient(org)
-        self.assertEqual(gitClient.org, getJson.return_value)
-        getJson.assert_called_once_with(gitClient.ORG_URL.format(org=org))
+    """ Class for Github Org Client Tests """
 
-    def test_public_repos_url(self) -> None:
+    @parameterized.expand([
+        ('google'),
+        ('abc')
+    ])
+    @patch('client.get_json')
+    def test_org(self, input, mock):
+        """Test that GithubOrgClient.org returns the correct value"""
+        test_class = GithubOrgClient(input)
+        test_class.org()
+        mock.assert_called_once_with(f'https://api.github.com/orgs/{input}')
+
+    def test_public_repos_url(self):
         """
-        Test _public_repos_url property
+        Test that the result of _public_repos_url is the expected one
+        based on the mocked payload
         """
-        config = {
-            'return_value.repos_url': 'https://api.github.com/slam/repos/alx'
-        }
         with patch('client.GithubOrgClient.org',
-                   new_callable=PropertyMock, **config) as mockOrg:
-            test = GithubOrgClient('alx')
-            self.assertEqual(
-                test._public_repos_url,
-                mockOrg.return_value['repos_url']
-            )
+                   new_callable=PropertyMock) as mock:
+            payload = {"repos_url": "World"}
+            mock.return_value = payload
+            test_class = GithubOrgClient('test')
+            result = test_class._public_repos_url
+            self.assertEqual(result, payload["repos_url"])
 
     @patch('client.get_json')
-    def test_public_repos(self, mockGetJson: MagicMock) -> None:
+    def test_public_repos(self, mock_json):
         """
-        Test public_repos method
-        Args:
-            license_key (str): license key to validate
-            expected (List): list of repo names with license_key
-        Returns:
-            None
+        Test that the list of repos is what you expect from the chosen payload.
+        Test that the mocked property and the mocked get_json was called once.
         """
-        mockGetJson.return_value = [
-            {'name': 'cpp-netlib', 'license': {'key': 'bsl-1.0'}},
-            {'name': 'dagger', 'license': {'key': 'apache-2.0'}},
-            {'name': 'dot-net', 'license': {'key': 'bsl-1.0'}}
-        ]
-        propValue = {
-            'return_value': 'https://api.github.com/orgs/google/repos'
-        }
+        json_payload = [{"name": "Google"}, {"name": "Twitter"}]
+        mock_json.return_value = json_payload
+
         with patch('client.GithubOrgClient._public_repos_url',
-                   new_callable=PropertyMock, **propValue) as mockPublicRepo:
-            test = GithubOrgClient('google')
-            self.assertEqual(
-                test.public_repos(), ['cpp-netlib', 'dagger', 'dot-net']
-            )
-            mockPublicRepo.assert_called_once()
-        mockGetJson.assert_called_once()
+                   new_callable=PropertyMock) as mock_public:
+
+            mock_public.return_value = "hello/world"
+            test_class = GithubOrgClient('test')
+            result = test_class.public_repos()
+
+            check = [i["name"] for i in json_payload]
+            self.assertEqual(result, check)
+
+            mock_public.assert_called_once()
+            mock_json.assert_called_once()
 
     @parameterized.expand([
         ({"license": {"key": "my_license"}}, "my_license", True),
-        ({"license": {"key": "other_license"}}, "my_license", False),
+        ({"license": {"key": "other_license"}}, "my_license", False)
     ])
-    def test_has_license(self, license: Dict,
-                         key: str, expected: bool) -> None:
-        """
-        Test license check method
-        Args:
-            license (Dict): dictionary of license information
-            key (str): license key
-            expected (bool): `True` if key if valid else `False`
-        Returns:
-            bool
-        """
-        self.assertEqual(
-            GithubOrgClient.has_license(license, key), expected
-        )
+    def test_has_license(self, repo, license_key, expected):
+        """ unit-test for GithubOrgClient.has_license """
+        result = GithubOrgClient.has_license(repo, license_key)
+        self.assertEqual(result, expected)
 
 
-@parameterized_class(('org_payload', 'repos_payload',
-                      'expected_repos', 'apache2_repos'), TEST_PAYLOAD)
+@parameterized_class(
+    ("org_payload", "repos_payload", "expected_repos", "apache2_repos"),
+    TEST_PAYLOAD
+)
 class TestIntegrationGithubOrgClient(unittest.TestCase):
-    """
-    Integration test for GithubOrgClient
-    """
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        SetUp class method
-        """
-        def response(url):
-            """
-            Mocks request.get(url).json()
-            """
-            config = {'json.return_value': []}
-            for payload in TEST_PAYLOAD:
-                if url == payload[0]['repos_url']:
-                    config = {'json.return_value': payload[1]}
-                    break
-            return MagicMock(**config)
-
-        cls.get_patcher = patch('requests.get', side_effect=response)
-        cls.org_patcher = patch(
-            'client.GithubOrgClient.org',
-            new_callable=PropertyMock, **{'return_value': cls.org_payload}
-        )
-        cls.get_patcher.start()
-        cls.org_patcher.start()
-
-    def test_public_repos(self) -> None:
-        """
-        Tests for `public_repos` method without license
-        """
-        test = GithubOrgClient('google/repos')
-        self.assertEqual(
-            self.expected_repos,
-            test.public_repos(license=None)
-        )
-
-    def test_public_repos_with_license(self) -> None:
-        """
-        Tests for `public_repos` method with license
-        """
-        test = GithubOrgClient('google/repos')
-        self.assertEqual(
-            self.apache2_repos,
-            test.public_repos(license="apache-2.0")
-        )
+    """ Class for Integration test of fixtures """
 
     @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        TearDown class method
-        """
+    def setUpClass(cls):
+        """A class method called before tests in an individual class are run"""
+
+        config = {'return_value.json.side_effect':
+                  [
+                      cls.org_payload, cls.repos_payload,
+                      cls.org_payload, cls.repos_payload
+                  ]
+                  }
+        cls.get_patcher = patch('requests.get', **config)
+
+        cls.mock = cls.get_patcher.start()
+
+    def test_public_repos(self):
+        """ Integration test: public repos"""
+        test_class = GithubOrgClient("google")
+
+        self.assertEqual(test_class.org, self.org_payload)
+        self.assertEqual(test_class.repos_payload, self.repos_payload)
+        self.assertEqual(test_class.public_repos(), self.expected_repos)
+        self.assertEqual(test_class.public_repos("XLICENSE"), [])
+        self.mock.assert_called()
+
+    def test_public_repos_with_license(self):
+        """ Integration test for public repos with License """
+        test_class = GithubOrgClient("google")
+
+        self.assertEqual(test_class.public_repos(), self.expected_repos)
+        self.assertEqual(test_class.public_repos("XLICENSE"), [])
+        self.assertEqual(test_class.public_repos(
+            "apache-2.0"), self.apache2_repos)
+        self.mock.assert_called()
+
+    @classmethod
+    def tearDownClass(cls):
+        """A class method called after tests in an individual class have run"""
         cls.get_patcher.stop()
-        cls.org_patcher.stop()
-        
+
